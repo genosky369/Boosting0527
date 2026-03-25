@@ -311,6 +311,7 @@
                 <div class="card" data-goto="growth">
                     <div class="card-name">성장 재화 <span class="card-badge">4종</span></div>
                     <div class="card-desc">잠재력, 스킬 성장, 공허의 기운, 룬</div>
+
                     <div class="card-arrow">&#8250;</div>
                 </div>
                 <div class="card disabled">
@@ -334,22 +335,22 @@
                 <div class="list-item-status ready">사용 가능</div>
                 <div class="list-item-arrow">&#8250;</div>
             </div>
-            <div class="list-item disabled">
-                <div class="list-item-dot" style="background:#c0c6d0;"></div>
+            <div class="list-item" data-sim="skill">
+                <div class="list-item-dot" style="background:#8b5cc8;"></div>
                 <div class="list-item-name">스킬 성장</div>
-                <div class="list-item-status">준비중</div>
+                <div class="list-item-status ready">사용 가능</div>
                 <div class="list-item-arrow">&#8250;</div>
             </div>
-            <div class="list-item disabled">
-                <div class="list-item-dot" style="background:#c0c6d0;"></div>
+            <div class="list-item" data-sim="vacuity">
+                <div class="list-item-dot" style="background:#5a3a8a;"></div>
                 <div class="list-item-name">공허의 기운</div>
-                <div class="list-item-status">준비중</div>
+                <div class="list-item-status ready">사용 가능</div>
                 <div class="list-item-arrow">&#8250;</div>
             </div>
-            <div class="list-item disabled">
-                <div class="list-item-dot" style="background:#c0c6d0;"></div>
+            <div class="list-item" data-sim="rune">
+                <div class="list-item-dot" style="background:#c87b2a;"></div>
                 <div class="list-item-name">룬</div>
-                <div class="list-item-status">준비중</div>
+                <div class="list-item-status ready">사용 가능</div>
                 <div class="list-item-arrow">&#8250;</div>
             </div>
         </div>
@@ -375,8 +376,9 @@ const breadcrumb = document.getElementById('breadcrumb');
 /* --- 시뮬레이터 매핑 --- */
 const SIM_FILES = {
     potential: { file: 'potential.html', label: '잠재력' },
-    // 여기에 새 시뮬레이터 추가
-    // skill: { file: 'skill.html', label: '스킬 성장' },
+    skill: { file: 'skill.html', label: '스킬 성장' },
+    rune: { file: 'rune.html', label: '룬' },
+    vacuity: { file: 'vacuity.html', label: '공허의 기운' },
 };
 
 const CATEGORY_LABELS = {

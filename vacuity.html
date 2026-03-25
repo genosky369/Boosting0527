@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>공허의 기운 기댓값 시뮬레이터</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f7f8fa;
+            --bg-white: #ffffff;
+            --bg-subtle: #fafbfc;
+            --border: #e2e5ea;
+            --border-light: #eef0f3;
+            --text-primary: #1a1d23;
+            --text-secondary: #4a5060;
+            --text-muted: #8b91a0;
+            --text-caption: #a0a5b2;
+            --accent: #4a6cf7;
+            --accent-light: #eef1ff;
+            --accent-border: #c5d0f5;
+            --rare: #3b82c8;
+            --rare-bg: #eef5fb;
+            --rare-border: #c5dcf0;
+            --epic: #8b5cc8;
+            --epic-bg: #f3eefb;
+            --epic-border: #d4c5f0;
+            --ancient: #c87b2a;
+            --ancient-bg: #fef6ee;
+            --ancient-border: #f0dcc5;
+            --positive: #1a8a5c;
+            --positive-bg: #eef8f3;
+            --negative: #c43d3d;
+            --negative-bg: #fdf0f0;
+            --radius: 10px;
+            --radius-sm: 6px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Noto Sans KR','Inter',-apple-system,sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .header {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border);
+            padding: 32px 48px 28px;
+        }
+        .header-inner { max-width: 1100px; margin: 0 auto; }
+        .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+        .header-meta { display: flex; gap: 20px; margin-top: 8px; }
+        .header-meta span { font-size: 13px; color: var(--text-muted); }
+        .header-meta span strong { color: var(--text-secondary); font-weight: 500; }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 28px 48px 60px; display: flex; flex-direction: column; gap: 20px; }
+
+        /* Grade Selector */
+        .grade-selector { display: flex; gap: 10px; }
+        .grade-btn {
+            flex: 1;
+            padding: 16px 20px;
+            background: var(--bg-white);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s;
+            font-family: 'Noto Sans KR',sans-serif;
+        }
+        .grade-btn:hover { border-color: #c0c6d0; }
+        .grade-btn .grade-name { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+        .grade-btn .grade-sub { font-size: 11px; color: var(--text-muted); }
+        .grade-btn.active.grp04 { border-color: var(--rare); background: var(--rare-bg); }
+        .grade-btn.active.grp04 .grade-name { color: var(--rare); }
+        .grade-btn.active.grp05 { border-color: var(--epic); background: var(--epic-bg); }
+        .grade-btn.active.grp05 .grade-name { color: var(--epic); }
+        .grade-btn.active.grp06 { border-color: var(--ancient); background: var(--ancient-bg); }
+        .grade-btn.active.grp06 .grade-name { color: var(--ancient); }
+
+        /* Settings */
+        .settings-row { display: flex; gap: 14px; }
+        .setting-card {
+            flex: 1;
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            box-shadow: var(--shadow-sm);
+        }
+        .setting-card label {
+            display: block; font-size: 11px; font-weight: 600;
+            color: var(--text-muted); letter-spacing: 0.3px;
+            margin-bottom: 8px; text-transform: uppercase;
+        }
+        .setting-card select, .setting-card input {
+            width: 100%; background: var(--bg-subtle);
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            padding: 10px 12px; font-size: 14px; font-family: 'Inter','Noto Sans KR',sans-serif;
+            font-weight: 500; color: var(--text-primary); outline: none;
+            transition: border-color 0.15s;
+        }
+        .setting-card select:focus, .setting-card input:focus {
+            border-color: var(--accent); background: var(--bg-white);
+        }
+        .setting-card input { text-align: right; }
+
+        /* Summary KPI */
+        .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+        .kpi {
+            background: var(--bg-white); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 20px 24px;
+            box-shadow: var(--shadow-sm); position: relative; overflow: hidden;
+        }
+        .kpi::before { content:''; position:absolute; top:0; left:0; width:3px; height:100%; background: var(--accent); }
+        .kpi-label { font-size:11px; font-weight:500; color:var(--text-muted); letter-spacing:0.3px; margin-bottom:8px; }
+        .kpi-value { font-family:'Inter',sans-serif; font-size:20px; font-weight:700; color:var(--accent); letter-spacing:-0.5px; white-space:nowrap; }
+        .kpi-sub { font-size:12px; color:var(--text-caption); margin-top:5px; }
+
+        /* Table */
+        .section {
+            background: var(--bg-white); border: 1px solid var(--border);
+            border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden;
+        }
+        .section-header { padding: 20px 24px 0; }
+        .section-title { font-size: 14px; font-weight: 600; }
+        .section-desc { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+
+        .table-wrap { overflow-x: auto; margin: 14px 24px 24px; border: 1px solid var(--border); border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        table th {
+            background: var(--bg-subtle); padding: 10px 12px;
+            font-size: 11px; font-weight: 600; color: var(--text-muted);
+            text-align: center; letter-spacing: 0.2px;
+            border-bottom: 1px solid var(--border); white-space: nowrap;
+        }
+        table td {
+            padding: 10px 12px; text-align: center;
+            border-bottom: 1px solid var(--border-light);
+            font-variant-numeric: tabular-nums;
+            font-family: 'Inter','Noto Sans KR',sans-serif;
+        }
+        table tbody tr:hover td { background: #f8f9fb; }
+        .c-level { font-weight: 600; text-align: left; white-space: nowrap; }
+        .c-prob { font-weight: 600; }
+        .c-prob.high { color: var(--positive); }
+        .c-prob.mid { color: var(--ancient); }
+        .c-prob.low { color: var(--negative); }
+        .c-tries { font-weight: 600; color: var(--text-secondary); }
+        .c-gold { font-weight: 500; color: var(--text-secondary); }
+        .c-mat { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+        .c-mat-name { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+        .row-total td {
+            background: var(--bg-subtle) !important;
+            font-weight: 700 !important;
+            border-top: 2px solid var(--border);
+        }
+        .pct-badge { display:inline-block; font-size:12px; font-weight:700; padding:4px 12px; border-radius:5px; font-family:'Inter',sans-serif; white-space:nowrap; }
+        .pct-ok { background:var(--positive-bg); color:var(--positive); }
+        .pct-warn { background:var(--negative-bg); color:var(--negative); }
+        table .pct-input {
+            background:var(--bg-subtle); border:1px solid var(--border); border-radius:5px;
+            padding:6px 8px; font-size:13px; font-family:'Inter',sans-serif; font-weight:500;
+            color:var(--text-primary); width:68px; text-align:center; outline:none; transition:border-color 0.15s;
+        }
+        table .pct-input:focus { border-color:var(--accent); background:var(--bg-white); }
+        .dist-gold { font-weight:600; color:var(--accent); white-space:nowrap; }
+        .dist-mat { font-weight:500; color:var(--text-secondary); white-space:nowrap; }
+
+        /* Material Summary */
+        .mat-summary {
+            background: var(--bg-white); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow-sm);
+        }
+        .mat-summary h3 { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+        .mat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+        .mat-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px; background: var(--bg-subtle);
+            border: 1px solid var(--border-light); border-radius: 8px;
+        }
+        .mat-item-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .mat-item-name { font-size: 12px; color: var(--text-secondary); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mat-item-val { font-family: 'Inter',sans-serif; font-size: 14px; font-weight: 700; color: var(--text-primary); }
+
+        @media (max-width: 900px) {
+            .container { padding: 20px 20px 40px; }
+            .header { padding: 24px 20px; }
+            .grade-selector { flex-direction: column; }
+            .settings-row { flex-direction: column; }
+            .kpi-row { grid-template-columns: 1fr; }
+        }
+
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+        input[type="number"] { -moz-appearance:textfield; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-inner">
+        <h1>공허의 기운 기댓값 시뮬레이터</h1>
+        <div class="header-meta">
+            <span><strong>대상</strong>&ensp;진화 / 돌파 / 극복의 흐름</span>
+            <span><strong>결과</strong>&ensp;성공 또는 유지 (하락 없음)</span>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- Group Selector -->
+    <div class="grade-selector">
+        <div class="grade-btn grp04 active" data-group="GRP04" onclick="selectGroup('GRP04')">
+            <div class="grade-name">진화의 흐름</div>
+            <div class="grade-sub">천장 없음</div>
+        </div>
+        <div class="grade-btn grp05" data-group="GRP05" onclick="selectGroup('GRP05')">
+            <div class="grade-name">돌파의 흐름</div>
+            <div class="grade-sub">천장 있음 (+2%/실패)</div>
+        </div>
+        <div class="grade-btn grp06" data-group="GRP06" onclick="selectGroup('GRP06')">
+            <div class="grade-name">극복의 흐름</div>
+            <div class="grade-sub">천장 있음 (+2%/실패)</div>
+        </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="settings-row">
+        <div class="setting-card">
+            <label>시작 레벨</label>
+            <select id="startLevel"></select>
+        </div>
+        <div class="setting-card">
+            <label>목표 레벨</label>
+            <select id="targetLevel"></select>
+        </div>
+    </div>
+
+    <!-- KPI -->
+    <div class="kpi-row">
+        <div class="kpi">
+            <div class="kpi-label">기대 총 시도 횟수</div>
+            <div class="kpi-value" id="kpiTries">0</div>
+            <div class="kpi-sub">모든 레벨 합산</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">기대 총 골드</div>
+            <div class="kpi-value" id="kpiGold">0</div>
+            <div class="kpi-sub" id="kpiGoldSub"></div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">레벨 범위</div>
+            <div class="kpi-value" id="kpiRange">-</div>
+            <div class="kpi-sub">선택 구간</div>
+        </div>
+    </div>
+
+    <!-- Detail Table -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-title">레벨별 상세</div>
+            <div class="section-desc">각 레벨의 성공 확률, 기대 시도 횟수, 비용을 표시합니다</div>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead id="detailHead"></thead>
+                <tbody id="tableBody"></tbody>
+                <tfoot id="tableFoot"></tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Material Summary -->
+    <div class="mat-summary">
+        <h3>재료 총 기댓값 요약</h3>
+        <div class="mat-grid" id="matGrid"></div>
+    </div>
+
+    <!-- Weekly Distribution -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-title">주차별 배분 설정</div>
+            <div class="section-desc">10주간 총 기댓값 재료를 각 주차에 몇 %씩 배분할지 설정합니다. 합계가 100%여야 합니다.</div>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th rowspan="2" style="text-align:left">주차</th>
+                        <th rowspan="2">날짜</th>
+                        <th rowspan="2">배분 (%)</th>
+                        <th rowspan="2">골드</th>
+                        <th id="distMatHeader" colspan="1">재료 배분</th>
+                    </tr>
+                    <tr id="distMatSubHeader"></tr>
+                </thead>
+                <tbody id="distBody"></tbody>
+                <tfoot id="distFoot"></tfoot>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+/* ===== MATERIAL NAME MAP ===== */
+const MAT_NAMES = {
+    'MidleCrystalloid_01': '선명한 장인의 혼',
+    'HighCrystalloid_01': '빛나는 장인의 혼',
+    'Weaponfragment_Grade2_01': '혼탁한 무기 조각',
+    'Weaponfragment_Grade3_01': '투명한 무기 조각',
+    'Weaponfragment_Grade4_01': '빛나는 무기 조각',
+    'Armorfragment_Grade2_01': '혼탁한 방어구 조각',
+    'Armorfragment_Grade3_01': '투명한 방어구 조각',
+    'Armorfragment_Grade4_01': '빛나는 방어구 조각',
+    'Accessoryfragment_Grade2_01': '혼탁한 장신구 조각',
+    'Accessoryfragment_Grade3_01': '투명한 장신구 조각',
+    'Accessoryfragment_Grade4_01': '빛나는 장신구 조각',
+};
+
+const MAT_COLORS = {
+    'MidleCrystalloid_01': '#7a6a4a',
+    'HighCrystalloid_01': '#5a4a2a',
+    'Weaponfragment_Grade2_01': '#6b8e5a',
+    'Weaponfragment_Grade3_01': '#3a8a5f',
+    'Weaponfragment_Grade4_01': '#1a7a4f',
+    'Armorfragment_Grade2_01': '#5a7a9a',
+    'Armorfragment_Grade3_01': '#3b6a8a',
+    'Armorfragment_Grade4_01': '#2a5a7a',
+    'Accessoryfragment_Grade2_01': '#9a6a7a',
+    'Accessoryfragment_Grade3_01': '#8a4a6a',
+    'Accessoryfragment_Grade4_01': '#7a3a5a',
+};
+
+/* ===== DATA =====
+   Format: [level, step, prob(/10000), gold, mat1_key, mat1_qty, mat2_key, mat2_qty, mat3_key, mat3_qty, mat4_key, mat4_qty, hasCeiling]
+*/
+
+const DATA = {
+    GRP04: [
+        [1,1,7500,1850000,'MidleCrystalloid_01',500,'Weaponfragment_Grade2_01',120,'Armorfragment_Grade2_01',240,'Accessoryfragment_Grade2_01',120,false],
+        [2,1,7000,3700000,'MidleCrystalloid_01',520,'Weaponfragment_Grade2_01',120,'Armorfragment_Grade2_01',240,'Accessoryfragment_Grade2_01',120,false],
+        [3,1,6500,5550000,'MidleCrystalloid_01',540,'Weaponfragment_Grade3_01',22,'Armorfragment_Grade3_01',66,'Accessoryfragment_Grade3_01',22,false],
+        [4,1,6000,7400000,'MidleCrystalloid_01',560,'Weaponfragment_Grade3_01',22,'Armorfragment_Grade3_01',66,'Accessoryfragment_Grade3_01',22,false],
+        [5,1,3000,9250000,'MidleCrystalloid_01',580,'Weaponfragment_Grade3_01',24,'Armorfragment_Grade3_01',72,'Accessoryfragment_Grade3_01',24,false],
+        [6,2,7000,11100000,'MidleCrystalloid_01',600,'Weaponfragment_Grade2_01',130,'Armorfragment_Grade2_01',260,'Accessoryfragment_Grade2_01',130,false],
+        [7,2,6500,12950000,'MidleCrystalloid_01',620,'Weaponfragment_Grade4_01',5,'Armorfragment_Grade4_01',10,'Accessoryfragment_Grade4_01',5,false],
+        [8,2,6500,14800000,'MidleCrystalloid_01',640,'Weaponfragment_Grade2_01',130,'Armorfragment_Grade2_01',260,'Accessoryfragment_Grade2_01',130,false],
+        [9,2,5500,16650000,'MidleCrystalloid_01',660,'Weaponfragment_Grade2_01',130,'Armorfragment_Grade2_01',260,'Accessoryfragment_Grade2_01',130,false],
+        [10,2,3000,18500000,'MidleCrystalloid_01',680,'Weaponfragment_Grade3_01',26,'Armorfragment_Grade3_01',78,'Accessoryfragment_Grade3_01',26,false],
+        [11,3,6500,20350000,'MidleCrystalloid_01',700,'Weaponfragment_Grade2_01',140,'Armorfragment_Grade2_01',280,'Accessoryfragment_Grade2_01',140,false],
+        [12,3,6000,22200000,'MidleCrystalloid_01',720,'Weaponfragment_Grade2_01',140,'Armorfragment_Grade2_01',280,'Accessoryfragment_Grade2_01',140,false],
+        [13,3,5500,24050000,'MidleCrystalloid_01',740,'Weaponfragment_Grade4_01',6,'Armorfragment_Grade4_01',12,'Accessoryfragment_Grade4_01',6,false],
+        [14,3,5000,25900000,'MidleCrystalloid_01',760,'Weaponfragment_Grade2_01',140,'Armorfragment_Grade2_01',280,'Accessoryfragment_Grade2_01',140,false],
+        [15,3,2500,27750000,'MidleCrystalloid_01',780,'Weaponfragment_Grade3_01',30,'Armorfragment_Grade3_01',90,'Accessoryfragment_Grade3_01',30,false],
+        [16,4,6000,29600000,'HighCrystalloid_01',8,'Weaponfragment_Grade4_01',7,'Armorfragment_Grade4_01',14,'Accessoryfragment_Grade4_01',7,false],
+        [17,4,5500,31450000,'HighCrystalloid_01',8,'Weaponfragment_Grade3_01',32,'Armorfragment_Grade3_01',96,'Accessoryfragment_Grade3_01',32,false],
+        [18,4,5000,33300000,'HighCrystalloid_01',8,'Weaponfragment_Grade2_01',140,'Armorfragment_Grade2_01',280,'Accessoryfragment_Grade2_01',140,false],
+        [19,4,4500,35150000,'HighCrystalloid_01',8,'Weaponfragment_Grade2_01',140,'Armorfragment_Grade2_01',280,'Accessoryfragment_Grade2_01',140,false],
+        [20,4,2500,37000000,'HighCrystalloid_01',8,'Weaponfragment_Grade3_01',32,'Armorfragment_Grade3_01',96,'Accessoryfragment_Grade3_01',32,false],
+        [21,5,6000,38850000,'HighCrystalloid_01',9,'Weaponfragment_Grade2_01',150,'Armorfragment_Grade2_01',300,'Accessoryfragment_Grade2_01',150,false],
+        [22,5,5000,40700000,'HighCrystalloid_01',9,'Weaponfragment_Grade2_01',150,'Armorfragment_Grade2_01',300,'Accessoryfragment_Grade2_01',150,false],
+        [23,5,4500,42550000,'HighCrystalloid_01',9,'Weaponfragment_Grade3_01',35,'Armorfragment_Grade3_01',105,'Accessoryfragment_Grade3_01',35,false],
+        [24,5,4000,44400000,'HighCrystalloid_01',9,'Weaponfragment_Grade3_01',35,'Armorfragment_Grade3_01',105,'Accessoryfragment_Grade3_01',35,false],
+        [25,5,2500,46250000,'HighCrystalloid_01',9,'Weaponfragment_Grade4_01',8,'Armorfragment_Grade4_01',16,'Accessoryfragment_Grade4_01',8,false],
+        [26,6,5000,48100000,'HighCrystalloid_01',10,'Weaponfragment_Grade3_01',38,'Armorfragment_Grade3_01',114,'Accessoryfragment_Grade3_01',38,false],
+        [27,6,4500,49950000,'HighCrystalloid_01',10,'Weaponfragment_Grade2_01',160,'Armorfragment_Grade2_01',320,'Accessoryfragment_Grade2_01',160,false],
+        [28,6,4000,51800000,'HighCrystalloid_01',10,'Weaponfragment_Grade3_01',38,'Armorfragment_Grade3_01',114,'Accessoryfragment_Grade3_01',38,false],
+        [29,6,3000,53650000,'HighCrystalloid_01',10,'Weaponfragment_Grade2_01',160,'Armorfragment_Grade2_01',320,'Accessoryfragment_Grade2_01',160,false],
+        [30,6,2000,55500000,'HighCrystalloid_01',10,'Weaponfragment_Grade4_01',9,'Armorfragment_Grade4_01',18,'Accessoryfragment_Grade4_01',9,false],
+        [31,7,5000,57350000,'HighCrystalloid_01',11,'Weaponfragment_Grade2_01',170,'Armorfragment_Grade2_01',340,'Accessoryfragment_Grade2_01',170,false],
+        [32,7,4000,59200000,'HighCrystalloid_01',11,'Weaponfragment_Grade4_01',10,'Armorfragment_Grade4_01',20,'Accessoryfragment_Grade4_01',10,false],
+        [33,7,3000,61050000,'HighCrystalloid_01',11,'Weaponfragment_Grade4_01',10,'Armorfragment_Grade4_01',20,'Accessoryfragment_Grade4_01',10,false],
+        [34,7,3000,62900000,'HighCrystalloid_01',11,'Weaponfragment_Grade2_01',170,'Armorfragment_Grade2_01',340,'Accessoryfragment_Grade2_01',170,false],
+        [35,7,2000,64750000,'HighCrystalloid_01',11,'Weaponfragment_Grade3_01',41,'Armorfragment_Grade3_01',123,'Accessoryfragment_Grade3_01',41,false],
+        [36,8,4000,66600000,'HighCrystalloid_01',12,'Weaponfragment_Grade2_01',180,'Armorfragment_Grade2_01',360,'Accessoryfragment_Grade2_01',180,false],
+        [37,8,3500,68450000,'HighCrystalloid_01',12,'Weaponfragment_Grade2_01',180,'Armorfragment_Grade2_01',360,'Accessoryfragment_Grade2_01',180,false],
+        [38,8,3500,70300000,'HighCrystalloid_01',12,'Weaponfragment_Grade3_01',44,'Armorfragment_Grade3_01',132,'Accessoryfragment_Grade3_01',44,false],
+        [39,8,3000,72150000,'HighCrystalloid_01',12,'Weaponfragment_Grade3_01',44,'Armorfragment_Grade3_01',132,'Accessoryfragment_Grade3_01',44,false],
+        [40,8,2000,74000000,'HighCrystalloid_01',12,'Weaponfragment_Grade4_01',11,'Armorfragment_Grade4_01',22,'Accessoryfragment_Grade4_01',11,false],
+        [41,9,3500,75850000,'HighCrystalloid_01',13,'Weaponfragment_Grade2_01',190,'Armorfragment_Grade2_01',380,'Accessoryfragment_Grade2_01',190,false],
+        [42,9,3000,77700000,'HighCrystalloid_01',13,'Weaponfragment_Grade3_01',47,'Armorfragment_Grade3_01',141,'Accessoryfragment_Grade3_01',47,false],
+        [43,9,2500,79550000,'HighCrystalloid_01',13,'Weaponfragment_Grade3_01',47,'Armorfragment_Grade3_01',141,'Accessoryfragment_Grade3_01',47,false],
+        [44,9,2000,81400000,'HighCrystalloid_01',13,'Weaponfragment_Grade4_01',12,'Armorfragment_Grade4_01',24,'Accessoryfragment_Grade4_01',12,false],
+        [45,9,1500,83250000,'HighCrystalloid_01',13,'Weaponfragment_Grade3_01',47,'Armorfragment_Grade3_01',141,'Accessoryfragment_Grade3_01',47,false],
+        [46,10,3000,85100000,'HighCrystalloid_01',14,'Weaponfragment_Grade2_01',210,'Armorfragment_Grade2_01',420,'Accessoryfragment_Grade2_01',210,false],
+        [47,10,2500,86950000,'HighCrystalloid_01',14,'Weaponfragment_Grade2_01',210,'Armorfragment_Grade2_01',420,'Accessoryfragment_Grade2_01',210,false],
+        [48,10,2000,88800000,'HighCrystalloid_01',14,'Weaponfragment_Grade4_01',14,'Armorfragment_Grade4_01',28,'Accessoryfragment_Grade4_01',14,false],
+        [49,10,1500,90650000,'HighCrystalloid_01',14,'Weaponfragment_Grade2_01',210,'Armorfragment_Grade2_01',420,'Accessoryfragment_Grade2_01',210,false],
+        [50,10,1500,92500000,'HighCrystalloid_01',14,'Weaponfragment_Grade4_01',14,'Armorfragment_Grade4_01',28,'Accessoryfragment_Grade4_01',14,false],
+    ],
+    GRP05: [
+        [1,1,7000,2220000,'HighCrystalloid_01',18,'Weaponfragment_Grade3_01',24,'Armorfragment_Grade3_01',72,'Accessoryfragment_Grade3_01',24,true],
+        [2,1,6500,4440000,'HighCrystalloid_01',18,'Weaponfragment_Grade3_01',24,'Armorfragment_Grade3_01',72,'Accessoryfragment_Grade3_01',24,true],
+        [3,1,6000,6660000,'HighCrystalloid_01',18,'Weaponfragment_Grade3_01',24,'Armorfragment_Grade3_01',72,'Accessoryfragment_Grade3_01',24,true],
+        [4,1,5500,8880000,'HighCrystalloid_01',18,'Weaponfragment_Grade3_01',24,'Armorfragment_Grade3_01',72,'Accessoryfragment_Grade3_01',24,true],
+        [5,1,3000,11100000,'HighCrystalloid_01',18,'Weaponfragment_Grade4_01',5,'Armorfragment_Grade4_01',10,'Accessoryfragment_Grade4_01',5,true],
+        [6,2,6500,13320000,'HighCrystalloid_01',20,'Weaponfragment_Grade3_01',27,'Armorfragment_Grade3_01',81,'Accessoryfragment_Grade3_01',27,true],
+        [7,2,6000,15540000,'HighCrystalloid_01',20,'Weaponfragment_Grade3_01',27,'Armorfragment_Grade3_01',81,'Accessoryfragment_Grade3_01',27,true],
+        [8,2,5500,17760000,'HighCrystalloid_01',20,'Weaponfragment_Grade3_01',27,'Armorfragment_Grade3_01',81,'Accessoryfragment_Grade3_01',27,true],
+        [9,2,5000,19980000,'HighCrystalloid_01',20,'Weaponfragment_Grade3_01',27,'Armorfragment_Grade3_01',81,'Accessoryfragment_Grade3_01',27,true],
+        [10,2,3000,22200000,'HighCrystalloid_01',20,'Weaponfragment_Grade4_01',6,'Armorfragment_Grade4_01',12,'Accessoryfragment_Grade4_01',6,true],
+        [11,3,6000,24420000,'HighCrystalloid_01',22,'Weaponfragment_Grade3_01',30,'Armorfragment_Grade3_01',90,'Accessoryfragment_Grade3_01',30,true],
+        [12,3,5500,26640000,'HighCrystalloid_01',22,'Weaponfragment_Grade4_01',7,'Armorfragment_Grade4_01',14,'Accessoryfragment_Grade4_01',7,true],
+        [13,3,5000,28860000,'HighCrystalloid_01',22,'Weaponfragment_Grade3_01',30,'Armorfragment_Grade3_01',90,'Accessoryfragment_Grade3_01',30,true],
+        [14,3,4500,31080000,'HighCrystalloid_01',22,'Weaponfragment_Grade3_01',30,'Armorfragment_Grade3_01',90,'Accessoryfragment_Grade3_01',30,true],
+        [15,3,2500,33300000,'HighCrystalloid_01',22,'Weaponfragment_Grade4_01',7,'Armorfragment_Grade4_01',14,'Accessoryfragment_Grade4_01',7,true],
+        [16,4,5500,35520000,'HighCrystalloid_01',24,'Weaponfragment_Grade3_01',33,'Armorfragment_Grade3_01',99,'Accessoryfragment_Grade3_01',33,true],
+        [17,4,5000,37740000,'HighCrystalloid_01',24,'Weaponfragment_Grade3_01',33,'Armorfragment_Grade3_01',99,'Accessoryfragment_Grade3_01',33,true],
+        [18,4,4500,39960000,'HighCrystalloid_01',24,'Weaponfragment_Grade4_01',8,'Armorfragment_Grade4_01',16,'Accessoryfragment_Grade4_01',8,true],
+        [19,4,4000,42180000,'HighCrystalloid_01',24,'Weaponfragment_Grade3_01',33,'Armorfragment_Grade3_01',99,'Accessoryfragment_Grade3_01',33,true],
+        [20,4,2500,44400000,'HighCrystalloid_01',24,'Weaponfragment_Grade4_01',8,'Armorfragment_Grade4_01',16,'Accessoryfragment_Grade4_01',8,true],
+        [21,5,5000,46620000,'HighCrystalloid_01',26,'Weaponfragment_Grade3_01',36,'Armorfragment_Grade3_01',108,'Accessoryfragment_Grade3_01',36,true],
+        [22,5,4500,48840000,'HighCrystalloid_01',26,'Weaponfragment_Grade3_01',36,'Armorfragment_Grade3_01',108,'Accessoryfragment_Grade3_01',36,true],
+        [23,5,4000,51060000,'HighCrystalloid_01',26,'Weaponfragment_Grade3_01',36,'Armorfragment_Grade3_01',108,'Accessoryfragment_Grade3_01',36,true],
+        [24,5,3500,53280000,'HighCrystalloid_01',26,'Weaponfragment_Grade4_01',9,'Armorfragment_Grade4_01',18,'Accessoryfragment_Grade4_01',9,true],
+        [25,5,2000,55500000,'HighCrystalloid_01',26,'Weaponfragment_Grade4_01',9,'Armorfragment_Grade4_01',18,'Accessoryfragment_Grade4_01',9,true],
+        [26,6,4500,57720000,'HighCrystalloid_01',28,'Weaponfragment_Grade3_01',39,'Armorfragment_Grade3_01',117,'Accessoryfragment_Grade3_01',39,true],
+        [27,6,4000,59940000,'HighCrystalloid_01',28,'Weaponfragment_Grade4_01',10,'Armorfragment_Grade4_01',20,'Accessoryfragment_Grade4_01',10,true],
+        [28,6,3500,62160000,'HighCrystalloid_01',28,'Weaponfragment_Grade3_01',39,'Armorfragment_Grade3_01',117,'Accessoryfragment_Grade3_01',39,true],
+        [29,6,3000,64380000,'HighCrystalloid_01',28,'Weaponfragment_Grade3_01',39,'Armorfragment_Grade3_01',117,'Accessoryfragment_Grade3_01',39,true],
+        [30,6,2000,66600000,'HighCrystalloid_01',28,'Weaponfragment_Grade4_01',10,'Armorfragment_Grade4_01',20,'Accessoryfragment_Grade4_01',10,true],
+        [31,7,4000,68820000,'HighCrystalloid_01',30,'Weaponfragment_Grade3_01',42,'Armorfragment_Grade3_01',126,'Accessoryfragment_Grade3_01',42,true],
+        [32,7,3500,71040000,'HighCrystalloid_01',30,'Weaponfragment_Grade3_01',42,'Armorfragment_Grade3_01',126,'Accessoryfragment_Grade3_01',42,true],
+        [33,7,3000,73260000,'HighCrystalloid_01',30,'Weaponfragment_Grade4_01',11,'Armorfragment_Grade4_01',22,'Accessoryfragment_Grade4_01',11,true],
+        [34,7,3000,75480000,'HighCrystalloid_01',30,'Weaponfragment_Grade3_01',42,'Armorfragment_Grade3_01',126,'Accessoryfragment_Grade3_01',42,true],
+        [35,7,2000,77700000,'HighCrystalloid_01',30,'Weaponfragment_Grade4_01',11,'Armorfragment_Grade4_01',22,'Accessoryfragment_Grade4_01',11,true],
+        [36,8,4000,79920000,'HighCrystalloid_01',32,'Weaponfragment_Grade3_01',45,'Armorfragment_Grade3_01',135,'Accessoryfragment_Grade3_01',45,true],
+        [37,8,3500,82140000,'HighCrystalloid_01',32,'Weaponfragment_Grade3_01',45,'Armorfragment_Grade3_01',135,'Accessoryfragment_Grade3_01',45,true],
+        [38,8,3000,84360000,'HighCrystalloid_01',32,'Weaponfragment_Grade3_01',45,'Armorfragment_Grade3_01',135,'Accessoryfragment_Grade3_01',45,true],
+        [39,8,3000,86580000,'HighCrystalloid_01',32,'Weaponfragment_Grade4_01',12,'Armorfragment_Grade4_01',24,'Accessoryfragment_Grade4_01',12,true],
+        [40,8,2000,88800000,'HighCrystalloid_01',32,'Weaponfragment_Grade4_01',12,'Armorfragment_Grade4_01',24,'Accessoryfragment_Grade4_01',12,true],
+        [41,9,3500,91020000,'HighCrystalloid_01',34,'Weaponfragment_Grade3_01',48,'Armorfragment_Grade3_01',144,'Accessoryfragment_Grade3_01',48,true],
+        [42,9,3000,93240000,'HighCrystalloid_01',34,'Weaponfragment_Grade3_01',48,'Armorfragment_Grade3_01',144,'Accessoryfragment_Grade3_01',48,true],
+        [43,9,2500,95460000,'HighCrystalloid_01',34,'Weaponfragment_Grade4_01',13,'Armorfragment_Grade4_01',26,'Accessoryfragment_Grade4_01',13,true],
+        [44,9,2000,97680000,'HighCrystalloid_01',34,'Weaponfragment_Grade3_01',48,'Armorfragment_Grade3_01',144,'Accessoryfragment_Grade3_01',48,true],
+        [45,9,1500,99900000,'HighCrystalloid_01',34,'Weaponfragment_Grade4_01',13,'Armorfragment_Grade4_01',26,'Accessoryfragment_Grade4_01',13,true],
+        [46,10,3000,102120000,'HighCrystalloid_01',36,'Weaponfragment_Grade3_01',53,'Armorfragment_Grade3_01',159,'Accessoryfragment_Grade3_01',53,true],
+        [47,10,2500,104340000,'HighCrystalloid_01',36,'Weaponfragment_Grade3_01',53,'Armorfragment_Grade3_01',159,'Accessoryfragment_Grade3_01',53,true],
+        [48,10,2000,106560000,'HighCrystalloid_01',36,'Weaponfragment_Grade3_01',53,'Armorfragment_Grade3_01',159,'Accessoryfragment_Grade3_01',53,true],
+        [49,10,1500,108780000,'HighCrystalloid_01',36,'Weaponfragment_Grade4_01',15,'Armorfragment_Grade4_01',30,'Accessoryfragment_Grade4_01',15,true],
+        [50,10,1000,111000000,'HighCrystalloid_01',36,'Weaponfragment_Grade4_01',15,'Armorfragment_Grade4_01',30,'Accessoryfragment_Grade4_01',15,true],
+    ],
+    GRP06: [
+        [1,1,6500,2660000,'HighCrystalloid_01',25,'Weaponfragment_Grade3_01',35,'Armorfragment_Grade3_01',105,'Accessoryfragment_Grade3_01',35,true],
+        [2,1,6500,5330000,'HighCrystalloid_01',25,'Weaponfragment_Grade3_01',35,'Armorfragment_Grade3_01',105,'Accessoryfragment_Grade3_01',35,true],
+        [3,1,6000,7990000,'HighCrystalloid_01',25,'Weaponfragment_Grade4_01',8,'Armorfragment_Grade4_01',16,'Accessoryfragment_Grade4_01',8,true],
+        [4,1,5500,10660000,'HighCrystalloid_01',25,'Weaponfragment_Grade3_01',35,'Armorfragment_Grade3_01',105,'Accessoryfragment_Grade3_01',35,true],
+        [5,1,3000,13320000,'HighCrystalloid_01',25,'Weaponfragment_Grade4_01',8,'Armorfragment_Grade4_01',16,'Accessoryfragment_Grade4_01',8,true],
+        [6,2,6500,15980000,'HighCrystalloid_01',27,'Weaponfragment_Grade3_01',38,'Armorfragment_Grade3_01',114,'Accessoryfragment_Grade3_01',38,true],
+        [7,2,6000,18650000,'HighCrystalloid_01',27,'Weaponfragment_Grade4_01',9,'Armorfragment_Grade4_01',18,'Accessoryfragment_Grade4_01',9,true],
+        [8,2,5500,21310000,'HighCrystalloid_01',27,'Weaponfragment_Grade3_01',38,'Armorfragment_Grade3_01',114,'Accessoryfragment_Grade3_01',38,true],
+        [9,2,5000,23980000,'HighCrystalloid_01',27,'Weaponfragment_Grade4_01',9,'Armorfragment_Grade4_01',18,'Accessoryfragment_Grade4_01',9,true],
+        [10,2,3000,26640000,'HighCrystalloid_01',27,'Weaponfragment_Grade3_01',38,'Armorfragment_Grade3_01',114,'Accessoryfragment_Grade3_01',38,true],
+        [11,3,5500,29300000,'HighCrystalloid_01',29,'Weaponfragment_Grade4_01',10,'Armorfragment_Grade4_01',20,'Accessoryfragment_Grade4_01',10,true],
+        [12,3,5500,31970000,'HighCrystalloid_01',29,'Weaponfragment_Grade3_01',41,'Armorfragment_Grade3_01',123,'Accessoryfragment_Grade3_01',41,true],
+        [13,3,5000,34630000,'HighCrystalloid_01',29,'Weaponfragment_Grade4_01',10,'Armorfragment_Grade4_01',20,'Accessoryfragment_Grade4_01',10,true],
+        [14,3,4500,37300000,'HighCrystalloid_01',29,'Weaponfragment_Grade3_01',41,'Armorfragment_Grade3_01',123,'Accessoryfragment_Grade3_01',41,true],
+        [15,3,2500,39960000,'HighCrystalloid_01',29,'Weaponfragment_Grade4_01',10,'Armorfragment_Grade4_01',20,'Accessoryfragment_Grade4_01',10,true],
+        [16,4,5500,42620000,'HighCrystalloid_01',31,'Weaponfragment_Grade3_01',44,'Armorfragment_Grade3_01',132,'Accessoryfragment_Grade3_01',44,true],
+        [17,4,5000,45290000,'HighCrystalloid_01',31,'Weaponfragment_Grade4_01',11,'Armorfragment_Grade4_01',22,'Accessoryfragment_Grade4_01',11,true],
+        [18,4,4500,47950000,'HighCrystalloid_01',31,'Weaponfragment_Grade4_01',11,'Armorfragment_Grade4_01',22,'Accessoryfragment_Grade4_01',11,true],
+        [19,4,4000,50620000,'HighCrystalloid_01',31,'Weaponfragment_Grade3_01',44,'Armorfragment_Grade3_01',132,'Accessoryfragment_Grade3_01',44,true],
+        [20,4,2500,53280000,'HighCrystalloid_01',31,'Weaponfragment_Grade4_01',11,'Armorfragment_Grade4_01',22,'Accessoryfragment_Grade4_01',11,true],
+        [21,5,4500,55940000,'HighCrystalloid_01',33,'Weaponfragment_Grade4_01',12,'Armorfragment_Grade4_01',24,'Accessoryfragment_Grade4_01',12,true],
+        [22,5,4500,58610000,'HighCrystalloid_01',33,'Weaponfragment_Grade3_01',48,'Armorfragment_Grade3_01',144,'Accessoryfragment_Grade3_01',48,true],
+        [23,5,4000,61270000,'HighCrystalloid_01',33,'Weaponfragment_Grade4_01',12,'Armorfragment_Grade4_01',24,'Accessoryfragment_Grade4_01',12,true],
+        [24,5,3500,63940000,'HighCrystalloid_01',33,'Weaponfragment_Grade4_01',12,'Armorfragment_Grade4_01',24,'Accessoryfragment_Grade4_01',12,true],
+        [25,5,2000,66600000,'HighCrystalloid_01',33,'Weaponfragment_Grade3_01',48,'Armorfragment_Grade3_01',144,'Accessoryfragment_Grade3_01',48,true],
+        [26,6,4500,69260000,'HighCrystalloid_01',35,'Weaponfragment_Grade4_01',13,'Armorfragment_Grade4_01',26,'Accessoryfragment_Grade4_01',13,true],
+        [27,6,4000,71930000,'HighCrystalloid_01',35,'Weaponfragment_Grade4_01',13,'Armorfragment_Grade4_01',26,'Accessoryfragment_Grade4_01',13,true],
+        [28,6,3500,74590000,'HighCrystalloid_01',35,'Weaponfragment_Grade3_01',52,'Armorfragment_Grade3_01',156,'Accessoryfragment_Grade3_01',52,true],
+        [29,6,3000,77260000,'HighCrystalloid_01',35,'Weaponfragment_Grade4_01',13,'Armorfragment_Grade4_01',26,'Accessoryfragment_Grade4_01',13,true],
+        [30,6,2000,79920000,'HighCrystalloid_01',35,'Weaponfragment_Grade3_01',52,'Armorfragment_Grade3_01',156,'Accessoryfragment_Grade3_01',52,true],
+        [31,7,3500,82580000,'HighCrystalloid_01',37,'Weaponfragment_Grade3_01',56,'Armorfragment_Grade3_01',168,'Accessoryfragment_Grade3_01',56,true],
+        [32,7,3500,85250000,'HighCrystalloid_01',37,'Weaponfragment_Grade4_01',14,'Armorfragment_Grade4_01',28,'Accessoryfragment_Grade4_01',14,true],
+        [33,7,3000,87910000,'HighCrystalloid_01',37,'Weaponfragment_Grade4_01',14,'Armorfragment_Grade4_01',28,'Accessoryfragment_Grade4_01',14,true],
+        [34,7,3000,90580000,'HighCrystalloid_01',37,'Weaponfragment_Grade3_01',56,'Armorfragment_Grade3_01',168,'Accessoryfragment_Grade3_01',56,true],
+        [35,7,2000,93240000,'HighCrystalloid_01',37,'Weaponfragment_Grade4_01',14,'Armorfragment_Grade4_01',28,'Accessoryfragment_Grade4_01',14,true],
+        [36,8,3500,95900000,'HighCrystalloid_01',39,'Weaponfragment_Grade4_01',15,'Armorfragment_Grade4_01',30,'Accessoryfragment_Grade4_01',15,true],
+        [37,8,3500,98570000,'HighCrystalloid_01',39,'Weaponfragment_Grade3_01',60,'Armorfragment_Grade3_01',180,'Accessoryfragment_Grade3_01',60,true],
+        [38,8,3000,101230000,'HighCrystalloid_01',39,'Weaponfragment_Grade3_01',60,'Armorfragment_Grade3_01',180,'Accessoryfragment_Grade3_01',60,true],
+        [39,8,3000,103900000,'HighCrystalloid_01',39,'Weaponfragment_Grade4_01',15,'Armorfragment_Grade4_01',30,'Accessoryfragment_Grade4_01',15,true],
+        [40,8,2000,106560000,'HighCrystalloid_01',39,'Weaponfragment_Grade4_01',15,'Armorfragment_Grade4_01',30,'Accessoryfragment_Grade4_01',15,true],
+        [41,9,3000,109220000,'HighCrystalloid_01',41,'Weaponfragment_Grade4_01',16,'Armorfragment_Grade4_01',32,'Accessoryfragment_Grade4_01',16,true],
+        [42,9,3000,111890000,'HighCrystalloid_01',41,'Weaponfragment_Grade3_01',63,'Armorfragment_Grade3_01',189,'Accessoryfragment_Grade3_01',63,true],
+        [43,9,2500,114550000,'HighCrystalloid_01',41,'Weaponfragment_Grade4_01',16,'Armorfragment_Grade4_01',32,'Accessoryfragment_Grade4_01',16,true],
+        [44,9,2000,117220000,'HighCrystalloid_01',41,'Weaponfragment_Grade3_01',63,'Armorfragment_Grade3_01',189,'Accessoryfragment_Grade3_01',63,true],
+        [45,9,1500,119880000,'HighCrystalloid_01',41,'Weaponfragment_Grade4_01',16,'Armorfragment_Grade4_01',32,'Accessoryfragment_Grade4_01',16,true],
+        [46,10,3000,122540000,'HighCrystalloid_01',43,'Weaponfragment_Grade3_01',68,'Armorfragment_Grade3_01',204,'Accessoryfragment_Grade3_01',68,true],
+        [47,10,2500,125210000,'HighCrystalloid_01',43,'Weaponfragment_Grade4_01',17,'Armorfragment_Grade4_01',34,'Accessoryfragment_Grade4_01',17,true],
+        [48,10,2000,127870000,'HighCrystalloid_01',43,'Weaponfragment_Grade3_01',68,'Armorfragment_Grade3_01',204,'Accessoryfragment_Grade3_01',68,true],
+        [49,10,1500,130540000,'HighCrystalloid_01',43,'Weaponfragment_Grade4_01',17,'Armorfragment_Grade4_01',34,'Accessoryfragment_Grade4_01',17,true],
+        [50,10,1000,133200000,'HighCrystalloid_01',43,'Weaponfragment_Grade4_01',17,'Armorfragment_Grade4_01',34,'Accessoryfragment_Grade4_01',17,true],
+    ],
+};
+
+const GROUP_LABELS = { GRP04:'진화의 흐름', GRP05:'돌파의 흐름', GRP06:'극복의 흐름' };
+const GROUP_ADD_PROB = { GRP04: 0, GRP05: 200, GRP06: 200 };
+
+const WEEKS = [
+    { label:'1주차', date:'05.27' },
+    { label:'2주차', date:'06.03' },
+    { label:'3주차', date:'06.10' },
+    { label:'4주차', date:'06.17' },
+    { label:'5주차', date:'06.24' },
+    { label:'6주차', date:'07.01' },
+    { label:'7주차', date:'07.08' },
+    { label:'8주차', date:'07.15' },
+    { label:'9주차', date:'07.22' },
+    { label:'10주차', date:'07.29' },
+];
+
+let pctInputs = new Array(10).fill(10);
+let currentGroup = 'GRP04';
+
+/* ===== Formatting ===== */
+function fmt(n) {
+    if (n >= 100000000) return (n/100000000).toFixed(1).replace(/\.0$/,'') + '\u00A0억';
+    if (n >= 10000) return (n/10000).toFixed(1).replace(/\.0$/,'') + '\u00A0만';
+    return Math.round(n).toLocaleString('ko-KR');
+}
+function fmtFull(n) { return Math.round(n).toLocaleString('ko-KR'); }
+function fmtDec(n) { return n % 1 === 0 ? n.toLocaleString('ko-KR') : n.toFixed(1); }
+
+/* ===== Expected attempts with ceiling ===== */
+function expAttempts(baseProb10k, addProb10k) {
+    let E = 0, surv = 1;
+    for (let k = 1; k <= 5000; k++) {
+        const p = Math.min((baseProb10k + (k - 1) * addProb10k) / 10000, 1.0);
+        E += k * surv * p;
+        surv *= (1 - p);
+        if (surv < 1e-15) break;
+    }
+    return E;
+}
+
+/* ===== Group selection ===== */
+function selectGroup(group) {
+    currentGroup = group;
+    document.querySelectorAll('.grade-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`.grade-btn[data-group="${group}"]`).classList.add('active');
+    populateSelects();
+    render();
+}
+
+/* ===== Populate selects ===== */
+function populateSelects() {
+    const startSel = document.getElementById('startLevel');
+    const targetSel = document.getElementById('targetLevel');
+    const prevStart = parseInt(startSel.value) || 1;
+    const prevTarget = parseInt(targetSel.value) || 50;
+
+    startSel.innerHTML = '';
+    targetSel.innerHTML = '';
+    for (let i = 1; i <= 50; i++) {
+        startSel.innerHTML += `<option value="${i}" ${i === Math.min(prevStart, 50) ? 'selected' : ''}>Lv ${i}</option>`;
+    }
+    for (let i = 1; i <= 50; i++) {
+        targetSel.innerHTML += `<option value="${i}" ${i === Math.min(prevTarget, 50) ? 'selected' : ''}>Lv ${i}</option>`;
+    }
+}
+
+/* ===== Extract row data ===== */
+function getRowMats(row) {
+    // row: [level, step, prob, gold, m1k, m1q, m2k, m2q, m3k, m3q, m4k, m4q, hasCeiling]
+    const mats = [];
+    for (let i = 0; i < 4; i++) {
+        const key = row[4 + i * 2];
+        const qty = row[5 + i * 2];
+        if (key) mats.push({ key, qty });
+    }
+    return mats;
+}
+
+/* ===== Main render ===== */
+function render() {
+    const data = DATA[currentGroup];
+    const addProb = GROUP_ADD_PROB[currentGroup];
+    const startLv = parseInt(document.getElementById('startLevel').value) || 1;
+    const targetLv = parseInt(document.getElementById('targetLevel').value) || 50;
+
+    if (targetLv <= startLv) {
+        document.getElementById('detailHead').innerHTML = '';
+        document.getElementById('tableBody').innerHTML = '<tr><td colspan="20" style="padding:40px;color:var(--text-muted);">목표 레벨은 시작 레벨보다 높아야 합니다</td></tr>';
+        document.getElementById('tableFoot').innerHTML = '';
+        document.getElementById('matGrid').innerHTML = '';
+        document.getElementById('distBody').innerHTML = '';
+        document.getElementById('distFoot').innerHTML = '';
+        document.getElementById('distMatSubHeader').innerHTML = '';
+        document.getElementById('kpiTries').textContent = '0';
+        document.getElementById('kpiGold').textContent = '0';
+        document.getElementById('kpiRange').textContent = '-';
+        document.getElementById('kpiGoldSub').textContent = '';
+        return;
+    }
+
+    // Collect all unique material keys in the selected range
+    const allMatKeysSet = new Set();
+    for (let lv = startLv; lv <= targetLv; lv++) {
+        const row = data[lv - 1]; // 0-indexed
+        const mats = getRowMats(row);
+        mats.forEach(m => allMatKeysSet.add(m.key));
+    }
+    // Stable ordering: follow the order of MAT_NAMES keys
+    const allMatKeysOrdered = Object.keys(MAT_NAMES).filter(k => allMatKeysSet.has(k));
+
+    // Build thead
+    const detailHead = document.getElementById('detailHead');
+    detailHead.innerHTML = `<tr>
+        <th>레벨</th>
+        <th>단계</th>
+        <th>확률</th>
+        <th>기대시도</th>
+        <th>기대골드</th>
+        ${allMatKeysOrdered.map(k => `<th style="white-space:nowrap;">${MAT_NAMES[k]}</th>`).join('')}
+    </tr>`;
+
+    const tbody = document.getElementById('tableBody');
+    const tfoot = document.getElementById('tableFoot');
+    tbody.innerHTML = '';
+    tfoot.innerHTML = '';
+
+    let totalTries = 0, totalGold = 0;
+    const matTotals = {};
+    allMatKeysOrdered.forEach(k => { matTotals[k] = 0; });
+
+    for (let lv = startLv; lv <= targetLv; lv++) {
+        const row = data[lv - 1];
+        const level = row[0];
+        const step = row[1];
+        const prob10k = row[2];
+        const gold = row[3];
+        const hasCeiling = row[12];
+
+        const prob = prob10k / 10000;
+        const expectedTries = expAttempts(prob10k, addProb);
+        const expectedGold = expectedTries * gold;
+
+        totalTries += expectedTries;
+        totalGold += expectedGold;
+
+        // Build mat map for this row
+        const rowMats = getRowMats(row);
+        const rowMatMap = {};
+        rowMats.forEach(m => { rowMatMap[m.key] = m.qty; });
+
+        // Accumulate
+        allMatKeysOrdered.forEach(k => {
+            if (rowMatMap[k]) {
+                matTotals[k] += expectedTries * rowMatMap[k];
+            }
+        });
+
+        let probClass = 'high';
+        if (prob <= 0.3) probClass = 'low';
+        else if (prob <= 0.6) probClass = 'mid';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="c-level">Lv ${level}</td>
+            <td style="color:var(--text-muted);font-size:12px;">Step ${step}</td>
+            <td class="c-prob ${probClass}">${(prob * 100).toFixed(1)}%</td>
+            <td class="c-tries">${fmtDec(expectedTries)}회</td>
+            <td class="c-gold" style="font-weight:600;">${fmt(Math.round(expectedGold))}</td>
+            ${allMatKeysOrdered.map(k => {
+                const qty = rowMatMap[k];
+                if (qty) {
+                    return `<td class="c-mat">${fmtDec(expectedTries * qty)}</td>`;
+                }
+                return '<td></td>';
+            }).join('')}
+        `;
+        tbody.appendChild(tr);
+    }
+
+    // Total row
+    const totalTr = document.createElement('tr');
+    totalTr.className = 'row-total';
+    totalTr.innerHTML = `
+        <td class="c-level">합계</td>
+        <td></td>
+        <td></td>
+        <td class="c-tries">${fmtDec(totalTries)}회</td>
+        <td style="color:var(--accent);font-weight:700;">${fmt(Math.round(totalGold))}</td>
+        ${allMatKeysOrdered.map(k => `<td class="c-mat" style="font-weight:700;">${fmtDec(Math.ceil(matTotals[k]))}</td>`).join('')}
+    `;
+    tfoot.appendChild(totalTr);
+
+    // KPI
+    document.getElementById('kpiTries').textContent = fmtDec(totalTries) + '회';
+    document.getElementById('kpiGold').textContent = fmt(Math.round(totalGold));
+    document.getElementById('kpiGoldSub').textContent = fmtFull(Math.round(totalGold)) + ' Gold';
+    document.getElementById('kpiRange').textContent = `Lv ${startLv} → Lv ${targetLv}`;
+
+    // Material Summary
+    const matGrid = document.getElementById('matGrid');
+    matGrid.innerHTML = '';
+    matGrid.innerHTML += `
+        <div class="mat-item">
+            <div class="mat-item-dot" style="background:var(--accent);"></div>
+            <div class="mat-item-name">골드</div>
+            <div class="mat-item-val">${fmt(Math.round(totalGold))}</div>
+        </div>
+    `;
+    allMatKeysOrdered.forEach(key => {
+        if (matTotals[key] > 0) {
+            matGrid.innerHTML += `
+                <div class="mat-item">
+                    <div class="mat-item-dot" style="background:${MAT_COLORS[key] || '#999'};"></div>
+                    <div class="mat-item-name">${MAT_NAMES[key]}</div>
+                    <div class="mat-item-val">${fmtDec(Math.ceil(matTotals[key]))}</div>
+                </div>
+            `;
+        }
+    });
+
+    // === Weekly Distribution ===
+    const matKeys = allMatKeysOrdered.filter(k => matTotals[k] > 0);
+
+    const subHeader = document.getElementById('distMatSubHeader');
+    const matHeaderCol = document.getElementById('distMatHeader');
+    matHeaderCol.setAttribute('colspan', matKeys.length || 1);
+    subHeader.innerHTML = matKeys.map(k =>
+        `<th style="white-space:nowrap;font-size:10px;">${MAT_NAMES[k]}</th>`
+    ).join('');
+
+    const distBody = document.getElementById('distBody');
+    const distFoot = document.getElementById('distFoot');
+    distBody.innerHTML = '';
+    distFoot.innerHTML = '';
+
+    let pctSum = 0;
+
+    WEEKS.forEach((w, i) => {
+        const pct = pctInputs[i];
+        pctSum += pct;
+        const weekGold = Math.round(totalGold * pct / 100);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="c-level">${w.label}</td>
+            <td style="color:var(--text-caption);font-size:12px;">${w.date}</td>
+            <td><input type="number" min="0" max="100" step="0.01" value="${pct}" data-week="${i}" class="pct-input"></td>
+            <td class="dist-gold">${fmt(weekGold)}</td>
+            ${matKeys.map(k => `<td class="dist-mat">${fmtDec(Math.ceil(matTotals[k] * pct / 100))}</td>`).join('')}
+        `;
+        distBody.appendChild(tr);
+    });
+
+    // Distribution total
+    const ok = Math.abs(pctSum - 100) < 0.1;
+    const distTr = document.createElement('tr');
+    distTr.className = 'row-total';
+    distTr.innerHTML = `
+        <td class="c-level">합계</td>
+        <td></td>
+        <td><span class="pct-badge ${ok ? 'pct-ok' : 'pct-warn'}">${pctSum.toFixed(1)}%</span></td>
+        <td class="dist-gold">${fmt(Math.round(totalGold))}</td>
+        ${matKeys.map(k => `<td class="dist-mat" style="font-weight:700;">${fmtDec(Math.ceil(matTotals[k]))}</td>`).join('')}
+    `;
+    distFoot.appendChild(distTr);
+
+    // Bind pct inputs
+    document.querySelectorAll('.pct-input').forEach(el => {
+        el.addEventListener('change', function() {
+            pctInputs[parseInt(this.dataset.week)] = parseFloat(this.value) || 0;
+            render();
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    populateSelects();
+    render();
+    document.getElementById('startLevel').addEventListener('change', render);
+    document.getElementById('targetLevel').addEventListener('change', render);
+});
+</script>
+</body>
+</html>

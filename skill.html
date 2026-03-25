@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스킬 성장 기댓값 시뮬레이터</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f7f8fa;
+            --bg-white: #ffffff;
+            --bg-subtle: #fafbfc;
+            --border: #e2e5ea;
+            --border-light: #eef0f3;
+            --text-primary: #1a1d23;
+            --text-secondary: #4a5060;
+            --text-muted: #8b91a0;
+            --text-caption: #a0a5b2;
+            --accent: #4a6cf7;
+            --accent-light: #eef1ff;
+            --accent-border: #c5d0f5;
+            --rare: #3b82c8;
+            --rare-bg: #eef5fb;
+            --rare-border: #c5dcf0;
+            --epic: #8b5cc8;
+            --epic-bg: #f3eefb;
+            --epic-border: #d4c5f0;
+            --ancient: #c87b2a;
+            --ancient-bg: #fef6ee;
+            --ancient-border: #f0dcc5;
+            --positive: #1a8a5c;
+            --positive-bg: #eef8f3;
+            --negative: #c43d3d;
+            --negative-bg: #fdf0f0;
+            --radius: 10px;
+            --radius-sm: 6px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Noto Sans KR','Inter',-apple-system,sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .header {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border);
+            padding: 32px 48px 28px;
+        }
+        .header-inner { max-width: 1100px; margin: 0 auto; }
+        .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+        .header-meta { display: flex; gap: 20px; margin-top: 8px; }
+        .header-meta span { font-size: 13px; color: var(--text-muted); }
+        .header-meta span strong { color: var(--text-secondary); font-weight: 500; }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 28px 48px 60px; display: flex; flex-direction: column; gap: 20px; }
+
+        /* Grade Selector */
+        .grade-selector { display: flex; gap: 10px; }
+        .grade-btn {
+            flex: 1;
+            padding: 16px 20px;
+            background: var(--bg-white);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s;
+            font-family: 'Noto Sans KR',sans-serif;
+        }
+        .grade-btn:hover { border-color: #c0c6d0; }
+        .grade-btn .grade-name { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+        .grade-btn .grade-sub { font-size: 11px; color: var(--text-muted); }
+        .grade-btn.active.rare { border-color: var(--rare); background: var(--rare-bg); }
+        .grade-btn.active.rare .grade-name { color: var(--rare); }
+        .grade-btn.active.epic { border-color: var(--epic); background: var(--epic-bg); }
+        .grade-btn.active.epic .grade-name { color: var(--epic); }
+        .grade-btn.active.ancient { border-color: var(--ancient); background: var(--ancient-bg); }
+        .grade-btn.active.ancient .grade-name { color: var(--ancient); }
+
+        /* Settings */
+        .settings-row { display: flex; gap: 14px; }
+        .setting-card {
+            flex: 1;
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            box-shadow: var(--shadow-sm);
+        }
+        .setting-card label {
+            display: block; font-size: 11px; font-weight: 600;
+            color: var(--text-muted); letter-spacing: 0.3px;
+            margin-bottom: 8px; text-transform: uppercase;
+        }
+        .setting-card select, .setting-card input {
+            width: 100%; background: var(--bg-subtle);
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            padding: 10px 12px; font-size: 14px; font-family: 'Inter','Noto Sans KR',sans-serif;
+            font-weight: 500; color: var(--text-primary); outline: none;
+            transition: border-color 0.15s;
+        }
+        .setting-card select:focus, .setting-card input:focus {
+            border-color: var(--accent); background: var(--bg-white);
+        }
+        .setting-card input { text-align: right; }
+
+        /* Summary KPI */
+        .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+        .kpi {
+            background: var(--bg-white); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 20px 24px;
+            box-shadow: var(--shadow-sm); position: relative; overflow: hidden;
+        }
+        .kpi::before { content:''; position:absolute; top:0; left:0; width:3px; height:100%; background: var(--accent); }
+        .kpi-label { font-size:11px; font-weight:500; color:var(--text-muted); letter-spacing:0.3px; margin-bottom:8px; }
+        .kpi-value { font-family:'Inter',sans-serif; font-size:20px; font-weight:700; color:var(--accent); letter-spacing:-0.5px; white-space:nowrap; }
+        .kpi-sub { font-size:12px; color:var(--text-caption); margin-top:5px; }
+
+        /* Table */
+        .section {
+            background: var(--bg-white); border: 1px solid var(--border);
+            border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden;
+        }
+        .section-header { padding: 20px 24px 0; }
+        .section-title { font-size: 14px; font-weight: 600; }
+        .section-desc { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+
+        .table-wrap { overflow-x: auto; margin: 14px 24px 24px; border: 1px solid var(--border); border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 900px; }
+        table th {
+            background: var(--bg-subtle); padding: 10px 12px;
+            font-size: 11px; font-weight: 600; color: var(--text-muted);
+            text-align: center; letter-spacing: 0.2px;
+            border-bottom: 1px solid var(--border); white-space: nowrap;
+        }
+        table td {
+            padding: 10px 12px; text-align: center;
+            border-bottom: 1px solid var(--border-light);
+            font-variant-numeric: tabular-nums;
+            font-family: 'Inter','Noto Sans KR',sans-serif;
+        }
+        table tbody tr:hover td { background: #f8f9fb; }
+        .c-level { font-weight: 600; text-align: left; white-space: nowrap; }
+        .c-prob { font-weight: 600; }
+        .c-prob.high { color: var(--positive); }
+        .c-prob.mid { color: var(--ancient); }
+        .c-prob.low { color: var(--negative); }
+        .c-tries { font-weight: 600; color: var(--text-secondary); }
+        .c-gold { font-weight: 500; color: var(--text-secondary); }
+        .c-mat { font-size: 12px; color: var(--text-secondary); }
+        .c-mat-name { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+        .c-mat { white-space: nowrap; }
+        .row-total td {
+            background: var(--bg-subtle) !important;
+            font-weight: 700 !important;
+            border-top: 2px solid var(--border);
+        }
+        .pct-badge { display:inline-block; font-size:12px; font-weight:700; padding:4px 12px; border-radius:5px; font-family:'Inter',sans-serif; white-space:nowrap; }
+        .pct-ok { background:var(--positive-bg); color:var(--positive); }
+        .pct-warn { background:var(--negative-bg); color:var(--negative); }
+        table .pct-input {
+            background:var(--bg-subtle); border:1px solid var(--border); border-radius:5px;
+            padding:6px 8px; font-size:13px; font-family:'Inter',sans-serif; font-weight:500;
+            color:var(--text-primary); width:68px; text-align:center; outline:none; transition:border-color 0.15s;
+        }
+        table .pct-input:focus { border-color:var(--accent); background:var(--bg-white); }
+        .dist-gold { font-weight:600; color:var(--accent); white-space:nowrap; }
+        .dist-mat { font-weight:500; color:var(--text-secondary); white-space:nowrap; }
+
+        /* Material Summary */
+        .mat-summary {
+            background: var(--bg-white); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow-sm);
+        }
+        .mat-summary h3 { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+        .mat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+        .mat-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px; background: var(--bg-subtle);
+            border: 1px solid var(--border-light); border-radius: 8px;
+        }
+        .mat-item-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .mat-item-name { font-size: 12px; color: var(--text-secondary); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mat-item-val { font-family: 'Inter',sans-serif; font-size: 14px; font-weight: 700; color: var(--text-primary); }
+
+        @media (max-width: 900px) {
+            .container { padding: 20px 20px 40px; }
+            .header { padding: 24px 20px; }
+            .grade-selector { flex-direction: column; }
+            .settings-row { flex-direction: column; }
+            .kpi-row { grid-template-columns: 1fr; }
+        }
+
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+        input[type="number"] { -moz-appearance:textfield; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-inner">
+        <h1>스킬 성장 기댓값 시뮬레이터</h1>
+        <div class="header-meta">
+            <span><strong>대상</strong>&ensp;희귀 / 영웅 / 고대 스킬</span>
+            <span><strong>결과</strong>&ensp;성공 또는 유지 (하락 없음)</span>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- Grade -->
+    <div class="grade-selector">
+        <div class="grade-btn rare active" data-grade="GRADE3" onclick="selectGrade('GRADE3')">
+            <div class="grade-name">희귀</div>
+            <div class="grade-sub">GRADE 3</div>
+        </div>
+        <div class="grade-btn epic" data-grade="GRADE4" onclick="selectGrade('GRADE4')">
+            <div class="grade-name">영웅</div>
+            <div class="grade-sub">GRADE 4</div>
+        </div>
+        <div class="grade-btn ancient" data-grade="GRADE5" onclick="selectGrade('GRADE5')">
+            <div class="grade-name">고대</div>
+            <div class="grade-sub">GRADE 5</div>
+        </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="settings-row">
+        <div class="setting-card">
+            <label>시작 강화 단계</label>
+            <select id="startLevel"></select>
+        </div>
+        <div class="setting-card">
+            <label>목표 강화 단계</label>
+            <select id="targetLevel"></select>
+        </div>
+    </div>
+
+    <!-- Skill Count -->
+    <div class="settings-row">
+        <div class="setting-card">
+            <label>달성할 스킬 개수</label>
+            <input type="number" id="skillCount" value="1" min="1" max="100">
+        </div>
+        <div class="setting-card" style="flex:2;">
+            <label>요약</label>
+            <div style="font-size:13px; color:var(--text-secondary); padding:10px 0; font-weight:500;" id="summaryText">-</div>
+        </div>
+    </div>
+
+    <!-- KPI -->
+    <div class="kpi-row">
+        <div class="kpi">
+            <div class="kpi-label">기대 총 시도 횟수</div>
+            <div class="kpi-value" id="kpiTries">0</div>
+            <div class="kpi-sub">모든 단계 합산</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">기대 총 골드</div>
+            <div class="kpi-value" id="kpiGold">0</div>
+            <div class="kpi-sub" id="kpiGoldSub"></div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">성공률 범위</div>
+            <div class="kpi-value" id="kpiProb">-</div>
+            <div class="kpi-sub">선택 구간 내 최저 ~ 최고</div>
+        </div>
+    </div>
+
+    <!-- Detail Table -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-title">단계별 상세</div>
+            <div class="section-desc">각 단계의 성공 확률, 기대 시도 횟수, 비용을 표시합니다</div>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>강화 구간</th>
+                        <th>성공 확률</th>
+                        <th>기대 시도</th>
+                        <th>1회 골드</th>
+                        <th>기대 골드</th>
+                        <th>재료 1</th>
+                        <th>기대 수량</th>
+                        <th>재료 2</th>
+                        <th>기대 수량</th>
+                        <th>재료 3</th>
+                        <th>기대 수량</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+                <tfoot id="tableFoot"></tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Material Summary -->
+    <div class="mat-summary">
+        <h3>재료 총 기댓값 요약</h3>
+        <div class="mat-grid" id="matGrid"></div>
+    </div>
+
+    <!-- Weekly Distribution -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-title">주차별 배분 설정</div>
+            <div class="section-desc">10주간 총 기댓값 재료를 각 주차에 몇 %씩 배분할지 설정합니다. 합계가 100%여야 합니다.</div>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th rowspan="2" style="text-align:left">주차</th>
+                        <th rowspan="2">날짜</th>
+                        <th rowspan="2">배분 (%)</th>
+                        <th rowspan="2">골드</th>
+                        <th id="distMatHeader" colspan="6">재료 배분</th>
+                    </tr>
+                    <tr id="distMatSubHeader"></tr>
+                </thead>
+                <tbody id="distBody"></tbody>
+                <tfoot id="distFoot"></tfoot>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+/* ===== DATA ===== */
+const MAT_NAMES = {
+    'SkillEnchance_Main_Grade3': '희귀 마력의 기원',
+    'SkillEnchance_Main_Grade4': '영웅 마력의 기원',
+    'SkillEnchance_Main_Grade5': '고대 마력의 기원',
+    'SkillEnchance_Pice_Level02': '상급 신비로운 양피지',
+    'SkillEnchance_Pice_Level03': '최상급 신비로운 양피지',
+    'MidleCrystalloid_01': '선명한 장인의 혼',
+    'HighCrystalloid_01': '빛나는 장인의 혼',
+};
+
+const MAT_COLORS = {
+    'SkillEnchance_Main_Grade3': '#3b82c8',
+    'SkillEnchance_Main_Grade4': '#8b5cc8',
+    'SkillEnchance_Main_Grade5': '#c87b2a',
+    'SkillEnchance_Pice_Level02': '#3a8a5f',
+    'SkillEnchance_Pice_Level03': '#1a7a4f',
+    'MidleCrystalloid_01': '#7a6a4a',
+    'HighCrystalloid_01': '#5a4a2a',
+};
+
+// [level_from, gold, successWeight(out of 10000), mat1_key, mat1_qty, mat2_key, mat2_qty, mat3_key, mat3_qty]
+const DATA = {
+    GRADE3: [
+        [0, 60000, 10000, 'SkillEnchance_Pice_Level02',1, 'MidleCrystalloid_01',3, null,0],
+        [1, 96000, 9000, 'SkillEnchance_Pice_Level02',2, 'MidleCrystalloid_01',5, null,0],
+        [2, 120000, 8000, 'SkillEnchance_Pice_Level02',3, 'MidleCrystalloid_01',6, null,0],
+        [3, 240000, 7000, 'SkillEnchance_Pice_Level02',5, 'MidleCrystalloid_01',9, null,0],
+        [4, 600000, 6000, 'SkillEnchance_Main_Grade3',1, 'SkillEnchance_Pice_Level02',11, 'MidleCrystalloid_01',21],
+        [5, 1200000, 5000, 'SkillEnchance_Main_Grade3',2, 'SkillEnchance_Pice_Level02',12, 'MidleCrystalloid_01',30],
+        [6, 1800000, 5000, 'SkillEnchance_Main_Grade3',4, 'SkillEnchance_Pice_Level02',15, 'MidleCrystalloid_01',60],
+        [7, 2400000, 4000, 'SkillEnchance_Main_Grade3',7, 'SkillEnchance_Pice_Level02',19, 'MidleCrystalloid_01',120],
+        [8, 3600000, 3000, 'SkillEnchance_Main_Grade3',10, 'SkillEnchance_Pice_Level02',24, 'MidleCrystalloid_01',240],
+        [9, 6000000, 2000, 'SkillEnchance_Main_Grade3',15, 'SkillEnchance_Pice_Level02',29, 'MidleCrystalloid_01',600],
+    ],
+    GRADE4: [
+        [0, 360000, 10000, 'SkillEnchance_Pice_Level02',7, 'MidleCrystalloid_01',18, null,0],
+        [1, 576000, 9000, 'SkillEnchance_Pice_Level02',14, 'MidleCrystalloid_01',27, null,0],
+        [2, 720000, 8000, 'SkillEnchance_Pice_Level02',22, 'MidleCrystalloid_01',36, null,0],
+        [3, 1440000, 7000, 'SkillEnchance_Pice_Level02',29, 'MidleCrystalloid_01',54, null,0],
+        [4, 3600000, 6000, 'SkillEnchance_Main_Grade4',1, 'SkillEnchance_Pice_Level02',65, 'MidleCrystalloid_01',126],
+        [5, 7200000, 5000, 'SkillEnchance_Main_Grade4',1, 'SkillEnchance_Pice_Level03',1, 'HighCrystalloid_01',2],
+        [6, 10800000, 5000, 'SkillEnchance_Main_Grade4',2, 'SkillEnchance_Pice_Level03',2, 'HighCrystalloid_01',4],
+        [7, 14400000, 4000, 'SkillEnchance_Main_Grade4',3, 'SkillEnchance_Pice_Level03',2, 'HighCrystalloid_01',7],
+        [8, 21600000, 3000, 'SkillEnchance_Main_Grade4',4, 'SkillEnchance_Pice_Level03',3, 'HighCrystalloid_01',15],
+        [9, 36000000, 2000, 'SkillEnchance_Main_Grade4',5, 'SkillEnchance_Pice_Level03',3, 'HighCrystalloid_01',36],
+    ],
+    GRADE5: [
+        [0, 1440000, 10000, 'SkillEnchance_Pice_Level03',1, 'HighCrystalloid_01',1, null,0],
+        [1, 2304000, 9000, 'SkillEnchance_Pice_Level03',1, 'HighCrystalloid_01',1, null,0],
+        [2, 2880000, 8000, 'SkillEnchance_Pice_Level03',1, 'HighCrystalloid_01',1, null,0],
+        [3, 5760000, 7000, 'SkillEnchance_Pice_Level03',1, 'HighCrystalloid_01',1, null,0],
+        [4, 14400000, 6000, 'SkillEnchance_Main_Grade5',1, 'SkillEnchance_Pice_Level03',2, 'HighCrystalloid_01',2],
+        [5, 28800000, 5000, 'SkillEnchance_Main_Grade5',1, 'SkillEnchance_Pice_Level03',3, 'HighCrystalloid_01',3],
+        [6, 43200000, 5000, 'SkillEnchance_Main_Grade5',2, 'SkillEnchance_Pice_Level03',4, 'HighCrystalloid_01',7],
+        [7, 57600000, 4000, 'SkillEnchance_Main_Grade5',2, 'SkillEnchance_Pice_Level03',5, 'HighCrystalloid_01',14],
+        [8, 86400000, 3000, 'SkillEnchance_Main_Grade5',3, 'SkillEnchance_Pice_Level03',6, 'HighCrystalloid_01',29],
+        [9, 144000000, 2000, 'SkillEnchance_Main_Grade5',3, 'SkillEnchance_Pice_Level03',7, 'HighCrystalloid_01',72],
+    ],
+};
+
+const GRADE_LABELS = { GRADE3:'희귀', GRADE4:'영웅', GRADE5:'고대' };
+
+const WEEKS = [
+    { label:'1주차', date:'05.27' },
+    { label:'2주차', date:'06.03' },
+    { label:'3주차', date:'06.10' },
+    { label:'4주차', date:'06.17' },
+    { label:'5주차', date:'06.24' },
+    { label:'6주차', date:'07.01' },
+    { label:'7주차', date:'07.08' },
+    { label:'8주차', date:'07.15' },
+    { label:'9주차', date:'07.22' },
+    { label:'10주차', date:'07.29' },
+];
+
+let pctInputs = new Array(10).fill(10);
+let currentGrade = 'GRADE3';
+
+function fmt(n) {
+    if (n >= 100000000) return (n/100000000).toFixed(1).replace(/\.0$/,'') + '\u00A0억';
+    if (n >= 10000) return (n/10000).toFixed(1).replace(/\.0$/,'') + '\u00A0만';
+    return n.toLocaleString('ko-KR');
+}
+function fmtFull(n) { return Math.round(n).toLocaleString('ko-KR'); }
+function fmtDec(n) { return n % 1 === 0 ? n.toLocaleString('ko-KR') : n.toFixed(1); }
+
+function selectGrade(grade) {
+    currentGrade = grade;
+    document.querySelectorAll('.grade-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`.grade-btn[data-grade="${grade}"]`).classList.add('active');
+    populateSelects();
+    render();
+}
+
+function populateSelects() {
+    const startSel = document.getElementById('startLevel');
+    const targetSel = document.getElementById('targetLevel');
+    const prevStart = parseInt(startSel.value) || 0;
+    const prevTarget = parseInt(targetSel.value) || 10;
+
+    startSel.innerHTML = '';
+    targetSel.innerHTML = '';
+    for (let i = 0; i <= 9; i++) {
+        startSel.innerHTML += `<option value="${i}" ${i===Math.min(prevStart,9)?'selected':''}> +${i}</option>`;
+    }
+    for (let i = 1; i <= 10; i++) {
+        targetSel.innerHTML += `<option value="${i}" ${i===Math.min(prevTarget,10)?'selected':''}> +${i}</option>`;
+    }
+}
+
+function render() {
+    const data = DATA[currentGrade];
+    const startLv = parseInt(document.getElementById('startLevel').value) || 0;
+    const targetLv = parseInt(document.getElementById('targetLevel').value) || 10;
+    const skillCount = Math.max(1, parseInt(document.getElementById('skillCount').value) || 1);
+
+    // Summary text
+    document.getElementById('summaryText').textContent =
+        `${GRADE_LABELS[currentGrade]} 스킬 ${skillCount}개를 +${startLv} → +${targetLv} 달성하는 데 필요한 기댓값`;
+
+    if (targetLv <= startLv) {
+        document.getElementById('tableBody').innerHTML = '<tr><td colspan="11" style="padding:40px;color:var(--text-muted);">목표 단계는 시작 단계보다 높아야 합니다</td></tr>';
+        document.getElementById('tableFoot').innerHTML = '';
+        document.getElementById('matGrid').innerHTML = '';
+        document.getElementById('distBody').innerHTML = '';
+        document.getElementById('distFoot').innerHTML = '';
+        document.getElementById('distMatSubHeader').innerHTML = '';
+        document.getElementById('kpiTries').textContent = '0';
+        document.getElementById('kpiGold').textContent = '0';
+        document.getElementById('kpiProb').textContent = '-';
+        document.getElementById('kpiGoldSub').textContent = '';
+        return;
+    }
+
+    const tbody = document.getElementById('tableBody');
+    const tfoot = document.getElementById('tableFoot');
+    tbody.innerHTML = '';
+    tfoot.innerHTML = '';
+
+    let totalTries = 0, totalGold = 0;
+    const matTotals = {};
+    let minProb = 1, maxProb = 0;
+
+    for (let lv = startLv; lv < targetLv; lv++) {
+        const row = data[lv];
+        const prob = row[2] / 10000;
+        const expectedTries = 1 / prob;
+        const goldPerTry = row[1];
+        const expectedGold = expectedTries * goldPerTry;
+
+        if (prob < minProb) minProb = prob;
+        if (prob > maxProb) maxProb = prob;
+
+        totalTries += expectedTries;
+        totalGold += expectedGold;
+
+        const mats = [];
+        for (let m = 0; m < 3; m++) {
+            const key = row[3 + m*2];
+            const qty = row[4 + m*2];
+            if (key) {
+                const expectedQty = expectedTries * qty;
+                mats.push({ key, qty, expectedQty });
+                matTotals[key] = (matTotals[key] || 0) + expectedQty;
+            } else {
+                mats.push(null);
+            }
+        }
+
+        let probClass = 'high';
+        if (prob <= 0.3) probClass = 'low';
+        else if (prob <= 0.6) probClass = 'mid';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="c-level">+${lv} → +${lv+1}</td>
+            <td class="c-prob ${probClass}">${(prob*100).toFixed(0)}%</td>
+            <td class="c-tries">${fmtDec(expectedTries * skillCount)}회</td>
+            <td class="c-gold">${fmtFull(goldPerTry)}</td>
+            <td class="c-gold" style="font-weight:600;">${fmt(Math.round(expectedGold * skillCount))}</td>
+            ${mats.map(m => m ? `
+                <td class="c-mat-name">${MAT_NAMES[m.key]}</td>
+                <td class="c-mat">${fmtDec(m.expectedQty * skillCount)}</td>
+            ` : '<td></td><td></td>').join('')}
+        `;
+        tbody.appendChild(tr);
+    }
+
+    // Apply skill count
+    totalTries *= skillCount;
+    totalGold *= skillCount;
+    Object.keys(matTotals).forEach(k => matTotals[k] *= skillCount);
+
+    // Total row
+    const tr = document.createElement('tr');
+    tr.className = 'row-total';
+    tr.innerHTML = `
+        <td class="c-level">합계</td>
+        <td></td>
+        <td class="c-tries">${fmtDec(totalTries)}회</td>
+        <td></td>
+        <td style="color:var(--accent);font-weight:700;">${fmt(Math.round(totalGold))}</td>
+        <td colspan="6"></td>
+    `;
+    tfoot.appendChild(tr);
+
+    // KPI
+    document.getElementById('kpiTries').textContent = fmtDec(totalTries) + '회';
+    document.getElementById('kpiGold').textContent = fmt(Math.round(totalGold));
+    document.getElementById('kpiGoldSub').textContent = fmtFull(Math.round(totalGold)) + ' Gold';
+    document.getElementById('kpiProb').textContent = `${(minProb*100).toFixed(0)}% ~ ${(maxProb*100).toFixed(0)}%`;
+
+    // Material Summary
+    const matGrid = document.getElementById('matGrid');
+    matGrid.innerHTML = '';
+
+    // Gold first
+    matGrid.innerHTML += `
+        <div class="mat-item">
+            <div class="mat-item-dot" style="background:var(--accent);"></div>
+            <div class="mat-item-name">골드</div>
+            <div class="mat-item-val">${fmt(Math.round(totalGold))}</div>
+        </div>
+    `;
+
+    Object.keys(matTotals).forEach(key => {
+        matGrid.innerHTML += `
+            <div class="mat-item">
+                <div class="mat-item-dot" style="background:${MAT_COLORS[key] || '#999'};"></div>
+                <div class="mat-item-name">${MAT_NAMES[key]}</div>
+                <div class="mat-item-val">${fmtDec(Math.ceil(matTotals[key]))}</div>
+            </div>
+        `;
+    });
+
+    // === Weekly Distribution ===
+    const matKeys = Object.keys(matTotals);
+
+    // Sub header
+    const subHeader = document.getElementById('distMatSubHeader');
+    const matHeaderCol = document.getElementById('distMatHeader');
+    matHeaderCol.setAttribute('colspan', matKeys.length);
+    subHeader.innerHTML = matKeys.map(k =>
+        `<th style="white-space:nowrap;font-size:10px;">${MAT_NAMES[k]}</th>`
+    ).join('');
+
+    const distBody = document.getElementById('distBody');
+    const distFoot = document.getElementById('distFoot');
+    distBody.innerHTML = '';
+    distFoot.innerHTML = '';
+
+    let pctSum = 0;
+
+    WEEKS.forEach((w, i) => {
+        const pct = pctInputs[i];
+        pctSum += pct;
+        const weekGold = Math.round(totalGold * pct / 100);
+        const weekMats = {};
+        matKeys.forEach(k => { weekMats[k] = matTotals[k] * pct / 100; });
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="c-level">${w.label}</td>
+            <td style="color:var(--text-caption);font-size:12px;">${w.date}</td>
+            <td><input type="number" min="0" max="100" step="0.01" value="${pct}" data-week="${i}" class="pct-input"></td>
+            <td class="dist-gold">${fmt(weekGold)}</td>
+            ${matKeys.map(k => `<td class="dist-mat">${fmtDec(Math.ceil(weekMats[k]))}</td>`).join('')}
+        `;
+        distBody.appendChild(tr);
+    });
+
+    // Total row
+    const ok = Math.abs(pctSum - 100) < 0.1;
+    const distTr = document.createElement('tr');
+    distTr.className = 'row-total';
+    distTr.innerHTML = `
+        <td class="c-level">합계</td>
+        <td></td>
+        <td><span class="pct-badge ${ok ? 'pct-ok' : 'pct-warn'}">${pctSum.toFixed(1)}%</span></td>
+        <td class="dist-gold">${fmt(Math.round(totalGold))}</td>
+        ${matKeys.map(k => `<td class="dist-mat" style="font-weight:700;">${fmtDec(Math.ceil(matTotals[k]))}</td>`).join('')}
+    `;
+    distFoot.appendChild(distTr);
+
+    // Bind pct inputs
+    document.querySelectorAll('.pct-input').forEach(el => {
+        el.addEventListener('change', function() {
+            pctInputs[parseInt(this.dataset.week)] = parseFloat(this.value) || 0;
+            render();
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    populateSelects();
+    render();
+    document.getElementById('startLevel').addEventListener('change', render);
+    document.getElementById('targetLevel').addEventListener('change', render);
+    document.getElementById('skillCount').addEventListener('input', render);
+});
+</script>
+</body>
+</html>
