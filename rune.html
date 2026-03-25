@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>룬 성장 기댓값 시뮬레이터</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --bg:#f7f8fa;--bg-white:#fff;--bg-subtle:#fafbfc;--border:#e2e5ea;--border-light:#eef0f3;
@@ -99,10 +100,16 @@
         table .pct-input:focus{border-color:var(--accent);background:var(--bg-white);}
         .dist-mat{font-weight:500;color:var(--text-secondary);white-space:nowrap;}
 
+        .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .chart-card { background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 28px; box-shadow: var(--shadow-sm); }
+        .chart-card h3 { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 18px; }
+        .chart-area { position: relative; height: 280px; }
+
         @media(max-width:900px){
             .container{padding:20px 20px 40px;}.header{padding:24px 20px;}
             .rune-selector{grid-template-columns:repeat(2,1fr);}
             .settings-row{flex-direction:column;}.kpi-row{grid-template-columns:1fr;}
+            .charts-row{grid-template-columns:1fr;}
         }
         input[type="number"]::-webkit-outer-spin-button,input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
         input[type="number"]{-moz-appearance:textfield;}
@@ -209,6 +216,18 @@
     <div class="mat-summary">
         <h3>재료 총 기댓값 요약</h3>
         <div class="mat-grid" id="matGrid"></div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-row">
+        <div class="chart-card">
+            <h3>Step별 기대 시도 횟수</h3>
+            <div class="chart-area"><canvas id="chartBar"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <h3>Step별 SAVE 성공 확률</h3>
+            <div class="chart-area"><canvas id="chartProb"></canvas></div>
+        </div>
     </div>
 
     <!-- Weekly Distribution -->
@@ -348,6 +367,8 @@ const WEEKS = [
 
 let pctInputs = new Array(10).fill(10);
 let currentRune = 'RuneE';
+let barChart = null;
+let probChart = null;
 
 function fmt(n) {
     if (n >= 100000000) return (n/100000000).toFixed(1).replace(/\.0$/,'') + '\u00A0억';
@@ -566,10 +587,46 @@ function render() {
             render();
         });
     });
+
+    // Update charts
+    if (barChart && probChart) {
+        const chartLabels = [];
+        const chartTries = [];
+        const chartProbs = [];
+        for (let s = startStep - 1; s < targetStep; s++) {
+            const st = steps[s];
+            const res = calcStep(st.n1, st.n2, st.save);
+            chartLabels.push('Step ' + st.step);
+            chartTries.push(+(res.totalTries * runeCount).toFixed(2));
+            chartProbs.push(+(res.pSave * 100).toFixed(1));
+        }
+        barChart.data.labels = chartLabels;
+        barChart.data.datasets[0].data = chartTries;
+        barChart.update();
+        probChart.data.labels = chartLabels;
+        probChart.data.datasets[0].data = chartProbs;
+        probChart.update();
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     populateSelects();
+
+    const chartFont = {family:"'Inter','Noto Sans KR',sans-serif"};
+    Chart.defaults.font.family = chartFont.family;
+
+    barChart = new Chart(document.getElementById('chartBar'), {
+        type: 'bar',
+        data: { labels: [], datasets: [{ label: '기대 시도 횟수', data: [], backgroundColor: 'rgba(74,108,247,0.65)', borderRadius: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { font: chartFont } }, x: { ticks: { font: chartFont } } } }
+    });
+
+    probChart = new Chart(document.getElementById('chartProb'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ label: 'SAVE 확률 (%)', data: [], borderColor: '#c87b2a', backgroundColor: 'rgba(200,123,42,0.10)', fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#c87b2a' }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => v + '%', font: chartFont } }, x: { ticks: { font: chartFont } } } }
+    });
+
     render();
     document.getElementById('startStep').addEventListener('change', render);
     document.getElementById('targetStep').addEventListener('change', render);

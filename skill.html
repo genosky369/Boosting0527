@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>스킬 성장 기댓값 시뮬레이터</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --bg: #f7f8fa;
@@ -187,12 +188,18 @@
         .mat-item-name { font-size: 12px; color: var(--text-secondary); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .mat-item-val { font-family: 'Inter',sans-serif; font-size: 14px; font-weight: 700; color: var(--text-primary); }
 
+        .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .chart-card { background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 28px; box-shadow: var(--shadow-sm); }
+        .chart-card h3 { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 18px; }
+        .chart-area { position: relative; height: 280px; }
+
         @media (max-width: 900px) {
             .container { padding: 20px 20px 40px; }
             .header { padding: 24px 20px; }
             .grade-selector { flex-direction: column; }
             .settings-row { flex-direction: column; }
             .kpi-row { grid-template-columns: 1fr; }
+            .charts-row { grid-template-columns: 1fr; }
         }
 
         input[type="number"]::-webkit-outer-spin-button,
@@ -308,6 +315,18 @@
         <div class="mat-grid" id="matGrid"></div>
     </div>
 
+    <!-- Charts -->
+    <div class="charts-row">
+        <div class="chart-card">
+            <h3>기대 골드 per 강화 단계</h3>
+            <div class="chart-area"><canvas id="chartBar"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <h3>단계별 성공 확률</h3>
+            <div class="chart-area"><canvas id="chartProb"></canvas></div>
+        </div>
+    </div>
+
     <!-- Weekly Distribution -->
     <div class="section">
         <div class="section-header">
@@ -413,6 +432,8 @@ const WEEKS = [
 
 let pctInputs = new Array(10).fill(10);
 let currentGrade = 'GRADE3';
+let chartBar = null;
+let chartProb = null;
 
 function fmt(n) {
     if (n >= 100000000) return (n/100000000).toFixed(1).replace(/\.0$/,'') + '\u00A0억';
@@ -627,10 +648,146 @@ function render() {
             render();
         });
     });
+
+    // === Update Charts ===
+    updateCharts(data, startLv, targetLv, skillCount);
+}
+
+function updateCharts(data, startLv, targetLv, skillCount) {
+    const labels = [];
+    const goldValues = [];
+    const probValues = [];
+
+    for (let lv = 0; lv < 10; lv++) {
+        const row = data[lv];
+        labels.push(`+${lv}→+${lv + 1}`);
+        const prob = row[2] / 10000;
+        probValues.push(parseFloat((prob * 100).toFixed(1)));
+
+        if (lv >= startLv && lv < targetLv) {
+            const expectedTries = 1 / prob;
+            const expectedGold = expectedTries * row[1] * skillCount;
+            goldValues.push(Math.round(expectedGold / 10000)); // 만 단위
+        } else {
+            goldValues.push(0);
+        }
+    }
+
+    // Bar chart
+    if (chartBar) {
+        chartBar.data.labels = labels;
+        chartBar.data.datasets[0].data = goldValues;
+        chartBar.update();
+    }
+
+    // Line chart
+    if (chartProb) {
+        chartProb.data.labels = labels;
+        chartProb.data.datasets[0].data = probValues;
+        chartProb.update();
+    }
+}
+
+function initCharts() {
+    const ctxBar = document.getElementById('chartBar').getContext('2d');
+    chartBar = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: '기대 골드 (만)',
+                data: [],
+                backgroundColor: '#4a6cf7',
+                borderColor: '#3a5ce7',
+                borderWidth: 1,
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            return ctx.parsed.y.toLocaleString('ko-KR') + ' 만 골드';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { size: 11 } }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: '#eef0f3' },
+                    ticks: {
+                        font: { size: 11 },
+                        callback: function(v) { return v.toLocaleString('ko-KR') + '만'; }
+                    }
+                }
+            }
+        }
+    });
+
+    const ctxProb = document.getElementById('chartProb').getContext('2d');
+    chartProb = new Chart(ctxProb, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: '성공 확률 (%)',
+                data: [],
+                borderColor: '#4a6cf7',
+                backgroundColor: 'rgba(74, 108, 247, 0.08)',
+                borderWidth: 2.5,
+                pointBackgroundColor: '#4a6cf7',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                fill: true,
+                tension: 0.3,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            return ctx.parsed.y + '%';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { size: 11 } }
+                },
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    grid: { color: '#eef0f3' },
+                    ticks: {
+                        font: { size: 11 },
+                        callback: function(v) { return v + '%'; }
+                    }
+                }
+            }
+        }
+    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     populateSelects();
+    initCharts();
     render();
     document.getElementById('startLevel').addEventListener('change', render);
     document.getElementById('targetLevel').addEventListener('change', render);
