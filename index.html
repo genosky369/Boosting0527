@@ -314,9 +314,9 @@
 
                     <div class="card-arrow">&#8250;</div>
                 </div>
-                <div class="card disabled">
-                    <div class="card-name">소환권 <span class="card-badge soon">준비중</span></div>
-                    <div class="card-desc">추후 업데이트 예정</div>
+                <div class="card" data-sim="summon">
+                    <div class="card-name">소환권 <span class="card-badge">시뮬레이터</span></div>
+                    <div class="card-desc">클래스, 펫, 투혼, 카드 소환권 배분</div>
                     <div class="card-arrow">&#8250;</div>
                 </div>
             </div>
@@ -379,6 +379,7 @@ const SIM_FILES = {
     skill: { file: 'skill.html', label: '스킬 성장' },
     rune: { file: 'rune.html', label: '룬' },
     vacuity: { file: 'vacuity.html', label: '공허의 기운' },
+    summon: { file: 'https://boosting-summon-simulator-ughevvwnnrnt3bbxamoafx.streamlit.app/', label: '소환권' },
 };
 
 const CATEGORY_LABELS = {
@@ -477,6 +478,11 @@ function setBreadcrumb(items) {
 document.querySelectorAll('.card[data-goto]').forEach(card => {
     card.addEventListener('click', () => {
         navigateTo(card.dataset.goto);
+    });
+});
+document.querySelectorAll('.card[data-sim]').forEach(card => {
+    card.addEventListener('click', () => {
+        navigateTo('sim', card.dataset.sim);
     });
 });
 
