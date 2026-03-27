@@ -426,6 +426,11 @@ function navigateTo(viewId, simKey) {
     document.getElementById('view-sim').classList.remove('active');
 
     if (viewId === 'sim' && simKey && SIM_FILES[simKey]) {
+        // 외부 URL (http로 시작)은 새 탭으로 열기
+        if (SIM_FILES[simKey].file.startsWith('http')) {
+            window.open(SIM_FILES[simKey].file, '_blank');
+            return;
+        }
         document.getElementById('view-sim').classList.add('active');
         const frame = document.getElementById('simFrame');
         if (frame.getAttribute('data-loaded') !== simKey) {
